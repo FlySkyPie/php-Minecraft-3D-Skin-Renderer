@@ -1,137 +1,37 @@
 <?php
-	/****** MINECRAFT 3D Skin Generator *****
-	 * The contents of this project were first developed by Pierre Gros on 17th April 2012.
-	 * It has once been modified by Carlos Ferreira (http://www.carlosferreira.me) on 31st May 2014.
-	 * Translations done by Carlos Ferreira.
-	 * Later adapted by Gijs "Gyzie" Oortgiese (http://www.gijsoortgiese.com/). Started on the 6st of July 2014.
-	 * Fixing various issues.
-	 *
-	 **** GET Parameters ****
-	 * user - Minecraft's username for the skin to be rendered.
-	 * vr - Vertical Rotation.
-	 * hr - Horizontal Rotation.
-	 *
-	 * hrh - Horizontal Rotation of the Head.
-	 *
-	 * vrll - Vertical Rotation of the Left Leg.
-	 * vrrl - Vertical Rotation of the Right Leg.
-	 * vrla - Vertical Rotation of the Left Arm.
-	 * vrra - Vertical Rotation of the Right Arm.
-	 *
-	 * displayHair - Either or not to display hairs. Set to "false" to NOT display hairs.
-	 * headOnly - Either or not to display the ONLY the head. Set to "true" to display ONLY the head (and the hair, based on displayHair).
-	 *
-	 * format - The format in which the image is to be rendered. PNG ("png") is used by default set to "svg" to use a vector version.
-	 * ratio - The size of the "png" image. The default and minimum value is 2.
-	 * 
-	 * aa - Image smooting, false by default.
-	 */
-	
-if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
-	// Don't adjust the error reporting if we are an include file
-	error_reporting(E_ERROR);
-	//error_reporting(E_ALL);
-	//ini_set("display_errors", 1); // TODO not here - this is set in index.php
-}
+namespace FlySkyPie\MinecraftSkinRenderer;
 
-	/* Start Global variabal
-	 * These variabals are shared over multiple classes
-	 */
-	$seconds_to_cache = 60 * 60 * 24 * 7; // Cache duration sent to the browser.
-	
-	// Cosine and Sine values
-	$cos_alpha = null;
-	$sin_alpha = null;
-	$cos_omega = null;
-	$sin_omega = null;
-	
-	$minX = null;
-	$maxX = null;
-	$minY = null;
-	$maxY = null;
-	/* End Global variabel */
-	
-	/* Function converts the old _GET names to
-	 * the new names. This makes it still compatable
-	 * with scrips using the old names.
-	 * 
-	 * Espects the English _GET name.
-	 * Returns the _GET value or the default value.
-	 * Return false if the _GET is not found.
-	 */
-	function grabGetValue($name) {
-		$parameters = array('user' => array('old' => 'login', 'default' => false),
-							'vr' => array('old' => 'a', 'default' => '-25'),
-							'hr' => array('old' => 'w', 'default' => '35'),
-							'hrh' => array('old' => 'wt', 'default' => '0'),
-							'vrll' => array('old' => 'ajg', 'default' => '0'),
-							'vrrl' => array('old' => 'ajd', 'default' => '0'),
-							'vrla' => array('old' => 'abg', 'default' => '0'),
-							'vrra' => array('old' => 'abd', 'default' => '0'),
-							'displayHair' => array('old' => 'displayHairs', 'default' => 'true'),
-							'headOnly' => array('old' => 'headOnly', 'default' => 'false'),
-							'format' => array('old' => 'format', 'default' => 'png'),
-							'ratio' => array('old' => 'ratio', 'default' => '12'),
-							'aa' => array('old' => 'aa', 'default' => 'false'),
-							'layers' => array('old' => 'layers', 'default' => 'true')
-							);
-		
-		if(array_key_exists($name, $parameters)) {
-			if(isset($_GET[$name])) {
-				return $_GET[$name];
-			} else if (isset($_GET[$parameters[$name]['old']])) {
-				return $_GET[$parameters[$name]['old']];
-			}
-			return $parameters[$name]['default'];
-		}
-		
-		return false;
-	}
-	
-	// Check if the player name value has been set, and that we are not running as an included/required file. else do nothing.
-	if(( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) && grabGetValue('user') !== false) {
-		// There is a player name so they want an image output via url
-		$player = new render3DPlayer(	grabGetValue('user'),
-										grabGetValue('vr'),
-										grabGetValue('hr'),
-										grabGetValue('hrh'),
-										grabGetValue('vrll'),
-										grabGetValue('vrrl'),
-										grabGetValue('vrla'),
-										grabGetValue('vrra'),
-										grabGetValue('displayHair'),
-										grabGetValue('headOnly'),
-										grabGetValue('format'),
-										grabGetValue('ratio'),
-										grabGetValue('aa'),
-										grabGetValue('layers')
-								);
-		$player->get3DRender('browser');
-	}
-	
+use FlySkyPie\MinecraftSkinRenderer\Point;
+use FlySkyPie\MinecraftSkinRenderer\Polygon;
+use FlySkyPie\MinecraftSkinRenderer\Image;
+
 	/* Render3DPlayer class
 	 *
 	 */
-	class render3DPlayer {
-		private $fallback_img = 'char.png'; // Use a not found skin whenever something goes wrong.
-		private $localSkinFile = null;
-		private $playerName = null;
-		private $playerSkin = false;
+	class Render3DPlayer {
+    private $skinPath = '';
+    
+    /**
+     * @var resource.GD
+     */ 
+		private $playerSkin = null;
 		private $isNewSkinType = false;
 		
 		private $hd_ratio = 1;
 		
-		private $vR = null;
-		private $hR = null;
-		private $hrh = null;
-		private $vrll = null;
-		private $vrrl = null;
-		private $vrla = null;
-		private $vrra = null;
+		private $vR = -25;
+		private $hR = -25;
+		private $hrh = 0;
+		private $vrll = 0;
+		private $vrrl = 0;
+		private $vrla = 0;
+		private $vrra = 0;
 		private $head_only = null;
-		private $display_hair = null;
+		private $display_hair = true;
 		private $format = null;
 		private $ratio = null;
+    
+    
 		private $aa = null;
 		private $layers = null;
 		
@@ -154,154 +54,66 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 		
 		private $times = null;
 		
-		public function __construct($user, $vr, $hr, $hrh, $vrll, $vrrl, $vrla, $vrra, $displayHair, $headOnly, $format, $ratio, $aa, $layers, $localFile = null) {
-			$this->playerName = $user;
-			$this->vR = $vr;
-			$this->hR = $hr;
-			$this->hrh = $hrh;
-			$this->vrll = $vrll;
-			$this->vrrl = $vrrl;
-			$this->vrla = $vrla;
-			$this->vrra = $vrra;
-			$this->head_only = ($headOnly == 'true');
-			$this->display_hair = ($displayHair != 'false');
-			$this->format = $format;
-			$this->ratio = $ratio;
-			$this->aa = ($aa == 'true');
-			$this->layers = ($layers == 'true');
-			$this->localSkinFile = $localFile;
+		public function __construct() {
+			$this->head_only = false;
+			$this->ratio = 1;
+			$this->aa = true;
+			$this->layers = false;
 		}
+    
+    public function setImageRatio(int $value){
+      $this->ratio = $value;
+    }
+    
+    public function setDisplayHair(bool $value){
+      $this->display_hair = $value;
+    }
+    
+    /**
+     * Set vertical rotation of camera
+     */ 
+    public function setVerticalRotation($degree){
+      $this->vR = $degrree;
+    }
+    
+    public function setHorizontalRotation($degree){
+      $this->hR =  $degrree;
+    }
+    
+    public function setRotationOfHead($degree){
+      $this->hrh = $degree;
+    }
+    
+    public function setRotationOfRightArm($degree){
+      $this->vrra = $degree;
+    }
 		
-		/* Function can be used for tracking script duration
-		 *
-		 */
-		private function microtime_float() {
-			list($usec, $sec) = explode(" ", microtime());
-			return ((float) $usec + (float) $sec);
-		}
-		
-		/* Function checs if given string is an UUID
-		 * 
-		 * Return true or false
-		 */
-		private function isUUID($candidate) {
-			if (is_string($candidate)) {
-				// Still needs a better UUID check system
-				$trimmed = str_replace('-', '', $candidate);
-				if (strlen($trimmed) === 32){
-					return $trimmed;
-				}
-			}
-			return false;
-		}
-		
-		/* Function gets the player skin URL via the Mojang service by UUID
-		 *
-		 * Espects an UUID.
-		 * Returns player skin texure link, false on failure
-		 */
-		
-		private function getSkinURLViaUUIDViaMojang($UUID) {
-			$mojangServiceContent = file_get_contents('https://sessionserver.mojang.com/session/minecraft/profile/' . $UUID);
-			$contentArray = json_decode($mojangServiceContent, true);
-			
-			if(!is_array($contentArray)) {
-				return false;
-			}
-			
-			if(array_key_exists("properties", $contentArray)) {	
-				foreach($contentArray["properties"] as $element) {
-					if(array_key_exists("name", $element) && $element["name"] == "textures") {
-						$content = base64_decode($element["value"]);
-						$skinArray = json_decode($content, true);
-						
-						if(!array_key_exists("textures", $skinArray)) {
-							break;
-						}
-						
-						if(!array_key_exists("SKIN", $skinArray["textures"])) {
-							break;
-						}
-						
-						return $skinArray["textures"]["SKIN"]["url"];
-					}
-				}
-			}
-			
-			return false;
-		}
-		
-		/* Create a skin URL from the given name or UUID
-		 *
-		 * Espects an UUID or a name
-		 * returns a player skin link
-		 */
-		
-		private function getSkinURL() {
-			$isUUID = $this->isUUID($this->playerName);
-			if($isUUID !== false) {
-				$result = $this->getSkinURLViaUUIDViaMojang($isUUID);
-				return $result;
-			}
-			else{
-				$mojangProfileContent = file_get_contents('https://api.mojang.com/users/profiles/minecraft/' . $this->playerName . '?at=' . time());
-				$profileContentArray = json_decode($mojangProfileContent, true);
-				if(is_array($profileContentArray)) {
-					if(!array_key_exists("id", $profileContentArray)) {
-						return false;
-					}
-				}
-				$result = $this->getSkinURLViaUUIDViaMojang($profileContentArray["id"]);
-				return $result;
-			}
-			return false;
-		}
-		
-		/* Function grabs the player skin from the Mojang server and checks it.
-		 * 
-		 * Returns true on success, false on failure.
-		 */
-		private function getPlayerSkin() {
-			
-			// If a local file has been provided, use this instead of downloading one
-			if ($this->localSkinFile != null) {
-				$this->playerSkin = @imageCreateFromPng($this->localSkinFile);
-			} elseif (trim($this->playerName) == '') {
-				$this->playerSkin = imageCreateFromPng($this->fallback_img);
-				return false;
-			} else {
-				$skinURL = $this->getSkinURL();
-				if($skinURL !== false) {
-					$this->playerSkin = @imageCreateFromPng($skinURL);
-				}
-				// If failed to get skin URL via UUID: Did you tried it multiple times? Because Mojang does not accept too many requests!
-			}
-			
-			if (!$this->playerSkin) {
-				// Player skin does not exist
-				$this->playerSkin = imageCreateFromPng($this->fallback_img);
-				return false;
-			}
-		
-			if (imagesy($this->playerSkin) % 32 != 0) {
-				// Bad ratio created
-				$this->playerSkin = imageCreateFromPng($this->fallback_img);
-				return false;
-			}
-			
-			return true;
-		}
+    public function setRotationOfLeftArm($degree){
+      $this->vrla = $degree;
+    }
+    
+    public function setRotationOfRightLeg($degree){
+      $this->vrrl = $degree;
+    }
+    
+    public function setRotationOfLeftLeg($degree){
+      $this->vrll = $degree;
+    }
+    
+    /**
+     */ 
+    public function loadSkin($filename){
+      $this->playerSkin = @imageCreateFromPng($filename);
+    }
 		
 		/* Function renders the 3d image
+     * return png string.
 		 *
+     * @return string
 		 */
-		public function get3DRender($output = 'return') {
+		public function get3DRender() {
 			global $minX, $maxX, $minY, $maxY;
 
-			$this->times = array(array('Start', $this->microtime_float()));
-			$this->getPlayerSkin(); // Downlaod and check the player skin
-				$this->times[] = array('Download-Image', $this->microtime_float());
-			
 			$this->hd_ratio = imagesx($this->playerSkin) / 64; // Set HD ratio to 2 if the skin is 128x64. Check via width, not height because of new skin type.
 			
 			// check if new skin type. If both sides are equaly long: new skin type
@@ -309,10 +121,9 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 				$this->isNewSkinType = true;
 			}
 			
-			$this->playerSkin = img::convertToTrueColor($this->playerSkin); // Convert the image to true color if not a true color image
-				$this->times[] = array('Convert-to-true-color-if-needed', $this->microtime_float());
+			$this->playerSkin = Image::convertToTrueColor($this->playerSkin); // Convert the image to true color if not a true color image
 			$this->makeBackgroundTransparent(); // make background transparent (fix for weird rendering skins)
-				$this->times[] = array('Made-Background-Transparent', $this->microtime_float());
+
 			
 			// Quick fix for 1.8:
 			// Copy the extra layers ontop of the base layers
@@ -321,51 +132,17 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 			}
 			
 			$this->calculateAngles();
-				$this->times[] = array('Angle-Calculations', $this->microtime_float());
 			$this->facesDetermination();
-				$this->times[] = array('Determination-of-faces', $this->microtime_float());
 			$this->generatePolygons();
-				$this->times[] = array('Polygon-generation', $this->microtime_float());
 			$this->memberRotation();
-				$this->times[] = array('Members-rotation', $this->microtime_float());
 			$this->createProjectionPlan();
-				$this->times[] = array('Projection-plan', $this->microtime_float());
-			$result = $this->displayImage($output);
-				$this->times[] = array('Display-image', $this->microtime_float());
-			
-			if($output == 'return') {
-				return $result;
-			}
-			
-			for ( $i = 1; $i < count( $this->times ); $i++ ) {
-				header( 'generation-time-' . $i . '-' . $this->times[ $i ][ 0 ] . ': ' . ( $this->times[ $i ][ 1 ] - $this->times[ $i - 1 ][ 1 ] ) * 1000 . 'ms' );
-			}
-			header( 'generation-time-' . count( $this->times ) . '-TOTAL: ' . ( $this->times[ count( $this->times ) - 1 ][ 1 ] - $this->times[ 0 ][ 1 ] ) * 1000 . 'ms' );
-			
-			switch($this->format) {
-				case 'svg':
-					header( 'Content-Type: image/svg+xml' );
-					echo '<?xml version="1.0" standalone="no"?>
-						<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
-						"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">' . $result . "\n";
-					
-					for ( $i = 1; $i < count( $this->times ); $i++ ) {
-						echo '<!-- ' . ( $this->times[ $i ][ 1 ] - $this->times[ $i - 1 ][ 1 ] ) * 1000 . 'ms : ' . $this->times[ $i ][ 0 ] . ' -->' . "\n";
-					}
-					echo '<!-- TOTAL : ' . ( $this->times[ count( $this->times ) - 1 ][ 1 ] - $this->times[ 0 ][ 1 ] ) * 1000 . 'ms -->' . "\n";
-					
-					break;
-				case 'base64':
-					header('Content-Type: text/plain');
-					echo $result;
-					break;
-				case 'png':
-				default:
-					header('Content-type: image/png');
-					imagepng($result);
-					imagedestroy($result);
-					break;
-			}
+			$result = $this->displayImage();
+      
+      \ob_start();
+      \imagepng($result);
+      $contents = \ob_get_contents();
+      \ob_end_clean();
+      return $contents;
 		}
 		
 		/* Function fixes issues with images that have a solid background
@@ -399,7 +176,7 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 			$imgX = imagesx($this->playerSkin);
 			$imgY = imagesy($this->playerSkin);
 			
-			$dst = img::createEmptyCanvas($imgX, $imgY);
+			$dst = Image::createEmptyCanvas($imgX, $imgY);
 			
 			imagesavealpha($this->playerSkin, false);
 			
@@ -459,7 +236,7 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 			$newWidth = imagesx($this->playerSkin);
 			$newHeight = $newWidth / 2;
 			
-			$newImgPng = img::createEmptyCanvas($newWidth, $newHeight);
+			$newImgPng = Image::createEmptyCanvas($newWidth, $newHeight);
 			
 			imagecopy($newImgPng, $this->playerSkin, 0, 0, 0, 0, $newWidth, $newHeight);
 			
@@ -1586,7 +1363,7 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 		/* Function displays the image
 		 *
 		 */
-		private function displayImage($output) {
+		private function displayImage() {
 			global $minX, $maxX, $minY, $maxY;
 			global $seconds_to_cache;
 			
@@ -1604,72 +1381,41 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 			
 			if ($seconds_to_cache > 0) {
 				$ts = gmdate( "D, d M Y H:i:s", time() + $seconds_to_cache ) . ' GMT';
-				if($output != 'return') {
 					header( 'Expires: ' . $ts );
 					header( 'Pragma: cache' );
 					header( 'Cache-Control: max-age=' . $seconds_to_cache );
-				}
+				
 			}
 			
-			if ($this->format != 'svg') {
-				$srcWidth = $ratio * $width + 1;
-				$srcHeight = $ratio * $height + 1;
-				$realWidth = $srcWidth / 2;
-				$realHeight = $srcHeight / 2;
-				
-				$image = img::createEmptyCanvas($srcWidth, $srcHeight);
-			}
+      $srcWidth = $ratio * $width + 1;
+      $srcHeight = $ratio * $height + 1;
+      $realWidth = $srcWidth / 2;
+      $realHeight = $srcHeight / 2;
+      
+      $image = Image::createEmptyCanvas($srcWidth, $srcHeight);
+			
 			
 			$display_order = $this->getDisplayOrder();
 			
 			$imgOutput = '';
-			if($this->format == 'svg') {
-				$imgOutput .= '<svg width="100%" height="100%" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="' . $minX . ' ' . $minY . ' ' . $width . ' ' . $height . '">';
-			}
 			
 			foreach ($display_order as $pieces) {
 				foreach ($pieces as $piece => $faces) {
 					foreach ($faces as $face) {
 						foreach ($this->polygons[$piece][$face] as $poly) {
-							if ($this->format == 'svg') {
-								$imgOutput .= $poly->getSvgPolygon(1);
-							} else {
 								$poly->addPngPolygon($image, $minX, $minY, $ratio);
-							}
 						}
 					}
 				}
 			}
-			
-			if($this->format == 'svg') {
-				$imgOutput .= '</svg>';
-			}
-			
-			if ($this->format !== 'svg') {
+
 				if($this->aa === true) {
 					// image normal size (sort of AA).
 					// resize the image down to it's normal size so it will be smoother
-					$destImage = img::createEmptyCanvas($realWidth, $realHeight);
+					$destImage = Image::createEmptyCanvas($realWidth, $realHeight);
 					
 					imagecopyresampled($destImage, $image, 0, 0, 0, 0, $realWidth, $realHeight, $srcWidth, $srcHeight);
-					$image = $destImage;
-				}
-				
-				$imgData = null;
-				if($this->format == 'base64') {
-					// output png;base64
-					ob_start();
-					imagepng($image);
-					$imgData = ob_get_contents();
-					ob_end_clean();
-				} else {
-					$imgOutput = $image;
-				}
-				
-				if($imgData !== null) {
-					$imgOutput = base64_encode($imgData);
-					imagedestroy($image);
-				}
+					$imgOutput = $destImage;
 			}
 			
 			return $imgOutput;
@@ -1744,230 +1490,4 @@ if( basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"]) ) {
 		}
 	}
 	
-	/* Img class
-	 *
-	 * Handels image related things
-	 */
-	class img {
-		private function __construct() {
-		}
-		
-		/* Function creates a blank canvas
-		 * with transparancy with the size of the
-		 * given image.
-		 * 
-		 * Espects canvas with and canvast height.
-		 * Returns a empty canvas.
-		 */
-		public static function createEmptyCanvas($w, $h) {
-			$dst = imagecreatetruecolor($w, $h);
-			imagesavealpha($dst, true);
-			$trans_colour = imagecolorallocatealpha($dst, 255, 255, 255, 127);
-			imagefill($dst, 0, 0, $trans_colour);
-			
-			return $dst;
-		}
-		
-		/* Function converts a non true color image to
-		 * true color. This fixes the dark blue skins.
-		 * 
-		 * Espects an image.
-		 * Returns a true color image.
-		 */
-		public static function convertToTrueColor($img) {
-			if(imageistruecolor($img)) {
-				return $img;
-			}
 
-			$dst = img::createEmptyCanvas(imagesx($img), imagesy($img));
-		
-			imagecopy($dst, $img, 0, 0, 0, 0, imagesx($img), imagesy($img));
-			imagedestroy($img);
-
-			return $dst;
-		}
-	}
-		
-	/* Point Class
-	 *
-	 */
-	class Point {
-		private $_originCoord;
-		private $_destCoord = array();
-		private $_isProjected = false;
-		private $_isPreProjected = false;
-		
-		public function __construct( $originCoord ) {
-			if ( is_array( $originCoord ) && count( $originCoord ) == 3 ) {
-				$this->_originCoord = array(
-					'x' => ( isset( $originCoord[ 'x' ] ) ? $originCoord[ 'x' ] : 0 ),
-					'y' => ( isset( $originCoord[ 'y' ] ) ? $originCoord[ 'y' ] : 0 ),
-					'z' => ( isset( $originCoord[ 'z' ] ) ? $originCoord[ 'z' ] : 0 ) 
-				);
-			} else {
-				$this->_originCoord = array(
-					'x' => 0,
-					'y' => 0,
-					'z' => 0 
-				);
-			}
-		}
-		
-		public function project() {
-			global $cos_alpha, $sin_alpha, $cos_omega, $sin_omega;
-			global $minX, $maxX, $minY, $maxY;
-
-			// 1, 0, 1, 0
-			$x = $this->_originCoord['x'];
-			$y = $this->_originCoord['y'];
-			$z = $this->_originCoord['z'];
-			$this->_destCoord['x'] = $x * $cos_omega + $z * $sin_omega;
-			$this->_destCoord['y'] = $x * $sin_alpha * $sin_omega + $y * $cos_alpha - $z * $sin_alpha * $cos_omega;
-			$this->_destCoord['z'] = -$x * $cos_alpha * $sin_omega + $y * $sin_alpha + $z * $cos_alpha * $cos_omega;
-			$this->_isProjected = true;
-			$minX = min($minX, $this->_destCoord['x']);
-			$maxX = max($maxX, $this->_destCoord['x']);
-			$minY = min($minY, $this->_destCoord['y']);
-			$maxY = max($maxY, $this->_destCoord['y']);
-		}
-		
-		public function preProject( $dx, $dy, $dz, $cos_alpha, $sin_alpha, $cos_omega, $sin_omega ) {
-			if ( !$this->_isPreProjected ) {
-				$x                         = $this->_originCoord[ 'x' ] - $dx;
-				$y                         = $this->_originCoord[ 'y' ] - $dy;
-				$z                         = $this->_originCoord[ 'z' ] - $dz;
-				$this->_originCoord[ 'x' ] = $x * $cos_omega + $z * $sin_omega + $dx;
-				$this->_originCoord[ 'y' ] = $x * $sin_alpha * $sin_omega + $y * $cos_alpha - $z * $sin_alpha * $cos_omega + $dy;
-				$this->_originCoord[ 'z' ] = -$x * $cos_alpha * $sin_omega + $y * $sin_alpha + $z * $cos_alpha * $cos_omega + $dz;
-				$this->_isPreProjected     = true;
-			}
-		}
-		
-		public function getOriginCoord() {
-			return $this->_originCoord;
-		}
-		
-		public function getDestCoord() {
-			return $this->_destCoord;
-		}
-		
-		public function getDepth() {
-			if ( !$this->_isProjected ) {
-				$this->project();
-			}
-			return $this->_destCoord[ 'z' ];
-		}
-		
-		public function isProjected() {
-			return $this->_isProjected;
-		}
-	}
-	
-	/* Polygon Class
-	 *
-	 */
-	class Polygon {
-		private $_dots;
-		private $_colour;
-		private $_isProjected = false;
-		private $_face = 'w';
-		private $_faceDepth = 0;
-		
-		public function __construct( $dots, $colour ) {
-			$this->_dots   = $dots;
-			$this->_colour = $colour;
-			$coord_0       = $dots[ 0 ]->getOriginCoord();
-			$coord_1       = $dots[ 1 ]->getOriginCoord();
-			$coord_2       = $dots[ 2 ]->getOriginCoord();
-			if ( $coord_0[ 'x' ] == $coord_1[ 'x' ] && $coord_1[ 'x' ] == $coord_2[ 'x' ] ) {
-				$this->_face      = 'x';
-				$this->_faceDepth = $coord_0[ 'x' ];
-			} else if ( $coord_0[ 'y' ] == $coord_1[ 'y' ] && $coord_1[ 'y' ] == $coord_2[ 'y' ] ) {
-				$this->_face      = 'y';
-				$this->_faceDepth = $coord_0[ 'y' ];
-			} else if ( $coord_0[ 'z' ] == $coord_1[ 'z' ] && $coord_1[ 'z' ] == $coord_2[ 'z' ] ) {
-				$this->_face      = 'z';
-				$this->_faceDepth = $coord_0[ 'z' ];
-			}
-		}
-		
-		// never used
-		private function getFace() {
-			return $this->_face;
-		}
-		
-		// never used
-		private function getFaceDepth() {
-			if ( !$this->_isProjected ) {
-				$this->project();
-			}
-			return $this->_faceDepth;
-		}
-		
-		public function getSvgPolygon( $ratio ) {
-			$points_2d = '';
-			$r         = ( $this->_colour >> 16 ) & 0xFF;
-			$g         = ( $this->_colour >> 8 ) & 0xFF;
-			$b         = $this->_colour & 0xFF;
-			$vR        = ( 127 - ( ( $this->_colour & 0x7F000000 ) >> 24 ) ) / 127;
-			if ( $vR == 0 )
-				return '';
-			foreach ( $this->_dots as $dot ) {
-				$coord = $dot->getDestCoord();
-				$points_2d .= $coord[ 'x' ] * $ratio . ',' . $coord[ 'y' ] * $ratio . ' ';
-			}
-			$comment = '';
-			return $comment . '<polygon points="' . $points_2d . '" style="fill:rgba(' . $r . ',' . $g . ',' . $b . ',' . $vR . ')" />' . "\n";
-		}
-		
-		public function addPngPolygon( &$image, $minX, $minY, $ratio ) {
-			$points_2d = array();
-			$nb_points = 0;
-			$r         = ( $this->_colour >> 16 ) & 0xFF;
-			$g         = ( $this->_colour >> 8 ) & 0xFF;
-			$b         = $this->_colour & 0xFF;
-			$vR        = ( 127 - ( ( $this->_colour & 0x7F000000 ) >> 24 ) ) / 127;
-			if ( $vR == 0 )
-				return;
-			$same_plan_x = true;
-			$same_plan_y = true;
-			foreach ( $this->_dots as $dot ) {
-				$coord = $dot->getDestCoord();
-				if ( !isset( $coord_x ) )
-					$coord_x = $coord[ 'x' ];
-				if ( !isset( $coord_y ) )
-					$coord_y = $coord[ 'y' ];
-				if ( $coord_x != $coord[ 'x' ] )
-					$same_plan_x = false;
-				if ( $coord_y != $coord[ 'y' ] )
-					$same_plan_y = false;
-				$points_2d[] = ( $coord[ 'x' ] - $minX ) * $ratio;
-				$points_2d[] = ( $coord[ 'y' ] - $minY ) * $ratio;
-				$nb_points++;
-			}
-			if ( !( $same_plan_x || $same_plan_y ) ) {
-				$colour = imagecolorallocate( $image, $r, $g, $b );
-				imagefilledpolygon( $image, $points_2d, $nb_points, $colour );
-			}
-		}
-		
-		public function isProjected() {
-			return $this->_isProjected;
-		}
-		
-		public function project() { 
-			foreach ( $this->_dots as &$dot ) {
-				if ( !$dot->isProjected() ) {
-					$dot->project();
-				}
-			}
-			$this->_isProjected = true;
-		}
-		
-		public function preProject( $dx, $dy, $dz, $cos_alpha, $sin_alpha, $cos_omega, $sin_omega ) {
-			foreach ( $this->_dots as &$dot ) {
-				$dot->preProject( $dx, $dy, $dz, $cos_alpha, $sin_alpha, $cos_omega, $sin_omega );
-			}
-		}
-	}
-?>

@@ -1,0 +1,18 @@
+{
+    "name": "flyskypie/php-minecraft-3d-skin-renderer",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "FlySkyPie(Wei Ji)",
+            "email": "c445dj544@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {},
+    "autoload":{
+        "psr-4":{
+          "FlySkyPie\\MinecraftSkinRenderer\\":"src/"
+        }
+    }
+}
