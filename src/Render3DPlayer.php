@@ -49,7 +49,7 @@ class Render3DPlayer {
    * When set to "true" the image will be smoother.
    * @var bool
    */
-  private $aa = false;
+  private $aa = true;
 
   /**
    * Apply overlay skin layers. 
@@ -86,7 +86,6 @@ class Render3DPlayer {
   public function __construct() {
     $this->head_only = false;
     $this->ratio = 1;
-    $this->aa = true;
     $this->layers = false;
   }
 
@@ -1437,7 +1436,7 @@ class Render3DPlayer {
 
     $display_order = $this->getDisplayOrder();
 
-    $imgOutput = '';
+
 
     foreach ($display_order as $pieces) {
       foreach ($pieces as $piece => $faces) {
@@ -1455,10 +1454,10 @@ class Render3DPlayer {
       $destImage = Image::createEmptyCanvas($realWidth, $realHeight);
 
       imagecopyresampled($destImage, $image, 0, 0, 0, 0, $realWidth, $realHeight, $srcWidth, $srcHeight);
-      $imgOutput = $destImage;
+      return $destImage;
     }
 
-    return $imgOutput;
+    return $image;
   }
 
   /**
