@@ -83,10 +83,13 @@ class Render3DPlayer {
   private $cube_points = null;
   private $polygons = null;
 
-  public function __construct() {
-    $this->head_only = false;
-    $this->ratio = 1;
-    $this->layers = false;
+  /**
+   * Load skin by filename.
+   * 
+   * @param string $filename
+   */
+  public function __construct(string $filename) {
+    $this->playerSkin = @imageCreateFromPng($filename);
   }
 
   /**
@@ -129,15 +132,6 @@ class Render3DPlayer {
 
   public function setRotationOfLeftLeg(int $degree) {
     $this->vrll = $degree;
-  }
-
-  /**
-   * Load skin by filename.
-   * 
-   * @param string $filename
-   */
-  public function loadSkin(string $filename) {
-    $this->playerSkin = @imageCreateFromPng($filename);
   }
 
   /**
