@@ -90,8 +90,11 @@ class Render3DPlayer {
     $this->layers = false;
   }
 
+  /**
+   * Set image ratio, it affected image size of output.
+   */
   public function setImageRatio(int $value) {
-    $this->ratio = $value;
+    $this->ratio = ($value < 2) ? 2 : $value;
   }
 
   public function setDisplayHair(bool $value) {
@@ -101,15 +104,15 @@ class Render3DPlayer {
   /**
    * Set vertical rotation of camera
    */
-  public function setVerticalRotation($degree) {
-    $this->vR = $degrree;
+  public function setVerticalRotation(int $degree) {
+    $this->vR = $degree;
   }
 
-  public function setHorizontalRotation($degree) {
-    $this->hR = $degrree;
+  public function setHorizontalRotation(int $degree) {
+    $this->hR = $degree;
   }
 
-  public function setRotationOfHead($degree) {
+  public function setRotationOfHead(int $degree) {
     $this->hrh = $degree;
   }
 
@@ -117,30 +120,32 @@ class Render3DPlayer {
     $this->vrra = $degree;
   }
 
-  public function setRotationOfLeftArm($degree) {
+  public function setRotationOfLeftArm(int $degree) {
     $this->vrla = $degree;
   }
 
-  public function setRotationOfRightLeg($degree) {
+  public function setRotationOfRightLeg(int $degree) {
     $this->vrrl = $degree;
   }
 
-  public function setRotationOfLeftLeg($degree) {
+  public function setRotationOfLeftLeg(int $degree) {
     $this->vrll = $degree;
   }
 
   /**
+   * Load skin by filename.
+   * 
+   * @param string $filename
    */
-  public function loadSkin($filename) {
+  public function loadSkin(string $filename) {
     $this->playerSkin = @imageCreateFromPng($filename);
   }
 
-  /* Function renders the 3d image
-   * return png string.
+  /**
+   * Function renders the 3d image,return PNG string.
    *
    * @return string
    */
-
   public function get3DRender() {
     global $minX, $maxX, $minY, $maxY;
 
@@ -172,11 +177,11 @@ class Render3DPlayer {
     return $contents;
   }
 
-  /* Function fixes issues with images that have a solid background
+  /**
+   * Function fixes issues with images that have a solid background
    * 
    * Espects an tru color image.
    */
-
   private function makeBackgroundTransparent() {
     // check if the corner box is one solid color
     $tempValue = null;
@@ -250,13 +255,13 @@ class Render3DPlayer {
     return;
   }
 
-  /* Function converts a 1.8 skin (which is not supported by
+  /**
+   * Function converts a 1.8 skin (which is not supported by
    * the script) to the old skin format.
    * 
    * Espects an image.
    * Returns a croped image.
    */
-
   private function cropToOldSkinFormat() {
     if (imagesx($this->playerSkin) !== imagesy($this->playerSkin)) {
       return $this->playerSkin;
@@ -272,13 +277,13 @@ class Render3DPlayer {
     $this->playerSkin = $newImgPng;
   }
 
-  /* Function copys the extra layers of a 1.8 skin
+  /**
+   * Function copys the extra layers of a 1.8 skin
    * onto the base layers so that it will still show. QUICK FIX, NEEDS BETTER FIX
    * 
    * Espects an image.
    * Returns a croped image.
    */
-
   private function fixNewSkinTypeLayers() {
     if (!$this->isNewSkinType) {
       return;
@@ -289,10 +294,10 @@ class Render3DPlayer {
     imagecopy($this->playerSkin, $this->playerSkin, 32, 48, 48, 48, 16, 16); // LA2
   }
 
-  /* Function Calculates the angels
+  /**
+   * Function Calculates the angels
    *
    */
-
   private function calculateAngles() {
     global $cos_alpha, $sin_alpha, $cos_omega, $sin_omega;
     global $minX, $maxX, $minY, $maxY;
@@ -363,10 +368,10 @@ class Render3DPlayer {
     $maxY = 0;
   }
 
-  /* Function determinates faces
+  /**
+   * Function determinates faces
    *
    */
-
   private function facesDetermination() {
     $this->visible_faces_format = array(
         'front' => array(),
@@ -433,10 +438,10 @@ class Render3DPlayer {
     }
   }
 
-  /* Function sets all cube points
+  /**
+   * Function sets all cube points
    *
    */
-
   private function setCubePoints() {
     $this->cube_points = array();
     $this->cube_points[] = array(
@@ -528,10 +533,10 @@ class Render3DPlayer {
     )); // 7
   }
 
-  /* Function generates polygons
+  /**
+   * Function generates polygons
    *
    */
-
   private function generatePolygons() {
     $depths_of_face = array();
     $this->polygons = array();
@@ -1336,10 +1341,10 @@ class Render3DPlayer {
     }
   }
 
-  /* Function rotates members
+  /**
+   * Function rotates members
    *
    */
-
   private function memberRotation() {
     foreach ($this->polygons['head'] as $face) {
       foreach ($face as $poly) {
@@ -1379,10 +1384,10 @@ class Render3DPlayer {
     }
   }
 
-  /* Create projection plan
+  /**
+   * Create projection plan
    *
    */
-
   private function createProjectionPlan() {
     foreach ($this->polygons as $piece) {
       foreach ($piece as $face) {
@@ -1395,10 +1400,10 @@ class Render3DPlayer {
     }
   }
 
-  /* Function displays the image
+  /**
+   * Function displays the image
    *
    */
-
   private function displayImage() {
     global $minX, $maxX, $minY, $maxY;
     global $seconds_to_cache;
@@ -1456,10 +1461,10 @@ class Render3DPlayer {
     return $imgOutput;
   }
 
-  /* Function retuns display order
+  /**
+   * Function retuns display order
    *
    */
-
   private function getDisplayOrder() {
     $display_order = array();
     if (in_array('top', $this->front_faces)) {
